@@ -1,0 +1,7 @@
+.venv/
+assembler
+*.am
+*.ob
+*.ent
+*.ext
+*~

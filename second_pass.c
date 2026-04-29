@@ -12,7 +12,8 @@ int fill_operand_info(char *operand_text, int mode, int offset, int IC, SymbolNo
 
     /* Mode 1: Direct Addressing (Label) */
     if (mode == 1) {
-        clean_name = skip_whitespaces(operand_text); /* Normalize leading whitespace. */
+        clean_name = skip_whitespaces(operand_text);
+trim_trailing_spaces(clean_name); /* Normalize leading whitespace. */
         temp = find_symbol(*sym_table, clean_name);
         if (temp != NULL) {
             code_image[array_index].value = temp->value; 
@@ -46,7 +47,8 @@ int fill_operand_info(char *operand_text, int mode, int offset, int IC, SymbolNo
         clean_name = skip_whitespaces(operand_text); /* Normalize leading whitespace. */
         temp = find_symbol(*sym_table, clean_name + 1);
         if (temp != NULL) {
-            code_image[array_index].value = temp->value - IC; 
+            /* המרחק מחושב מהכתובת של מילת המידע עצמה (offset) */
+            code_image[array_index].value = (temp->value - offset) & 0xFFF; 
             code_image[array_index].are = 'A';
         } else {
             fprintf(stderr, "Error: Label '%s' (Relative) not found.\n", clean_name + 1);
@@ -91,30 +93,37 @@ int run_second_pass(FILE *am_file, SymbolNode **sym_table, MemoryWord code_image
                 }
                 else if (num_ops == 1) {
                     dest_mode = detect_addressing_mode(skip_whitespaces(operands));
+                    /* אופרנד יחיד תמיד נכתב למילה מיד אחרי ההוראה */
                     if (!fill_operand_info(operands, dest_mode, IC + 1, IC, sym_table, code_image, &ext_file, base_filename)) {
                         error_found = 1;
                     }
                     IC += calculate_L(num_ops, -1, dest_mode);
                 }
                 else if (num_ops == 2) {
-                    /* Clean implementation for ANSI C */
                     char *src_op, *dest_op, *comma;
                     comma = strchr(operands, ',');
-                    
                     if (comma != NULL) {
                         *comma = '\0';
-                       src_op = skip_whitespaces(operands);
-                       dest_op = skip_whitespaces(comma + 1);
+                        src_op = skip_whitespaces(operands);
+                        dest_op = skip_whitespaces(comma + 1);
 
                         src_mode = detect_addressing_mode(src_op);
                         dest_mode = detect_addressing_mode(dest_op);
 
-                        if (!fill_operand_info(src_op, src_mode, IC + 1, IC, sym_table, code_image, &ext_file, base_filename)) {
-                            error_found = 1;
+                        /* מילוי אופרנד מקור - תמיד בכתובת IC + 1 */
+                        if (src_mode == 1 || src_mode == 2) {
+                            if (!fill_operand_info(src_op, src_mode, IC + 1, IC, sym_table, code_image, &ext_file, base_filename)) {
+                                error_found = 1;
+                            }
                         }
-                        if (!fill_operand_info(dest_op, dest_mode, IC + 2, IC, sym_table, code_image, &ext_file, base_filename)) {
-                            error_found = 1;
+
+                         האוגרים) */
+                        if (dest_mode == 1 || dest_mode == 2) {
+                            if (!fill_operand_info(dest_op, dest_mode, IC + 2, IC, sym_table, code_image, &ext_file, base_filename)) {
+                                error_found = 1;
+                            }
                         }
+
                         IC += calculate_L(num_ops, src_mode, dest_mode);
                     }
                 }
@@ -129,3 +138,4 @@ int run_second_pass(FILE *am_file, SymbolNode **sym_table, MemoryWord code_image
     *out_ic = IC;
     return !error_found;
 }
+

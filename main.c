@@ -14,13 +14,16 @@
 void process_file(char *filename) {
     MemoryWord code_image[MEMORY_SIZE];
     MemoryWord data_image[MEMORY_SIZE];
+  
     SymbolNode *sym_table = NULL;
     Macro *macro_table = NULL; /* Added to handle macro data as required by headers */
     int ic = INITIAL_IC, dc = 0;
     FILE *input_as_file, *output_am_file, *am_file_to_read;
     char as_filename[MAX_FILENAME_LEN];
     char am_filename[MAX_FILENAME_LEN];
-
+    
+      memset(code_image, 0, sizeof(code_image));
+memset(data_image, 0, sizeof(data_image));
     /* 1. Prepare filenames and open initial source file */
     sprintf(as_filename, "%s.as", filename);
     sprintf(am_filename, "%s.am", filename);
@@ -104,3 +107,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+

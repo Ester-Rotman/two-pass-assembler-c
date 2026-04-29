@@ -81,3 +81,4 @@ void free_symbols(SymbolNode *head) {
         current = next_node;
     }
 }
+

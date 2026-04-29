@@ -95,3 +95,4 @@ void encode_instruction(OpcodeInfo *op_info, int src_mode, char *src_op, int des
 
 #endif /* FIRST_PASS_H */
 int run_second_pass(FILE *am_file, SymbolNode **sym_table, MemoryWord code_image[], int *out_ic, char *base_filename);
+

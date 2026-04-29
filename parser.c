@@ -4,7 +4,6 @@
 #include "first_pass.h"
 
 /* Remove trailing whitespace from a mutable string. */
-
 void trim_trailing_spaces(char *str) {
     int len;
     if (str == NULL) return;
@@ -29,7 +28,7 @@ int parse_line(char *line, char *label, char *opcode, char *operands) {
     ptr = skip_whitespaces(ptr);
 
     /* Ignore empty lines and comment lines (';'). */
-    if (*ptr == '\0' || *ptr == '\n' || *ptr == ';') {
+    if (*ptr == '\0' || *ptr == '\n' || *ptr == '\r' || *ptr == ';') {
         return 0; /* Nothing to parse for assembler passes. */
     }
 
@@ -47,7 +46,7 @@ int parse_line(char *line, char *label, char *opcode, char *operands) {
         ptr = skip_whitespaces(ptr);
 
         /* Allow label-only lines without crashing. */
-        if (*ptr == '\0' || *ptr == '\n') return 1;
+        if (*ptr == '\0' || *ptr == '\n' || *ptr == '\r') return 1;
 
         /* Next token is opcode/directive. */
         sscanf(ptr, "%81s", opcode);
@@ -61,7 +60,7 @@ int parse_line(char *line, char *label, char *opcode, char *operands) {
     ptr = skip_whitespaces(ptr);
 
     /* Remaining text belongs to the operands field. */
-    if (*ptr != '\0' && *ptr != '\n') {
+    if (*ptr != '\0' && *ptr != '\n' && *ptr != '\r') {
         strcpy(operands, ptr);
         
         /* Strip trailing newline from operands, if present. */
@@ -70,26 +69,23 @@ int parse_line(char *line, char *label, char *opcode, char *operands) {
         }
     }
 
+    /* זהו ניקוי הקסם שמונע שגיאות של תווים נסתרים! */
+    trim_trailing_spaces(operands);
+
     return 1; /* Parsing completed successfully. */
 }
 
-/*
- * Compute instruction length (L) in machine words.
- * Input: operand count (0/1/2) and source/destination addressing modes.
- */
+/* Compute instruction length (L) in machine words. */
 int calculate_L(int num_operands, int src_mode, int dest_mode) {
-    int L = 1; /* The instruction word itself always takes one word. */
+    /* מילת ההוראה עצמה תמיד תופסת מילה אחת בזיכרון */
+    int L = 1; 
 
     if (num_operands == 1) {
         L += 1; /* One extra word for destination operand. */
     }
     else if (num_operands == 2) {
-        /* Two register operands (mode 3) share one additional word. */
-        if (src_mode == 3 && dest_mode == 3) {
-            L += 1;
-        } else {
-            L += 2; /* Otherwise each operand uses a separate word. */
-        }
+        /* No register sharing! Every operand takes its own word. */
+        L += 2; 
     }
     
     return L;

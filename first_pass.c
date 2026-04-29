@@ -76,7 +76,7 @@ int run_first_pass(FILE *am_file, SymbolNode **sym_table, MemoryWord code_image[
                         error_found = 1;
                     } else add_symbol(sym_table, label, DC, 0, 1, 0, 0); 
                 }
-                encode_string_directive(operands, data_image, &DC); 
+                encode_string_directive(skip_whitespaces(operands), data_image, &DC); 
             }
             else if (strcmp(opcode, ".extern") == 0) {
                 add_symbol(sym_table, operands, 0, 0, 0, 1, 0);
@@ -103,7 +103,7 @@ int run_first_pass(FILE *am_file, SymbolNode **sym_table, MemoryWord code_image[
 
                     if (op_info->num_operands == 0) {
                         check_empty = skip_whitespaces(operands);
-                        if (*check_empty != '\0' && *check_empty != '\n') {
+                        if (*check_empty != '\0' && *check_empty != '\n' && *check_empty != '\r') {
                             fprintf(stderr, "Error in line %d: Extraneous text.\n", line_number);
                             error_found = 1; line_error = 1;
                         }
@@ -169,4 +169,5 @@ int run_first_pass(FILE *am_file, SymbolNode **sym_table, MemoryWord code_image[
     *out_ic = IC; *out_dc = DC;
     return !error_found;
 }
+
 

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "first_pass.h" 
 
 /* Skip leading spaces and tabs and return first non-space character. */
 char *skip_whitespaces(char *str){
@@ -52,11 +53,14 @@ int detect_addressing_mode(char *str) {
             /* get_register_number already checks for 'r' and the digit */
             mode = 3;
         }
-        /* Case 1: Direct addressing (Label) */
-        else {
-            /* If it's not #, not *, and not a register, it's a label */
+
+       /* Case 1: Direct addressing (Label) */
+        else if (is_valid_label(str, NULL)) {
             mode = 1;
+        } else {
+            mode = -1; 
         }
     }
      return mode;
 }
+

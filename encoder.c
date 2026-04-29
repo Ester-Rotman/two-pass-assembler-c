@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "first_pass.h"
+#define MASK_12_BITS 0xFFF
 
 /* Encode .data operands into data image with strict comma/memory checks. */
 void encode_data_directive(char *operands, MemoryWord data_image[], int *dc_ptr) {
@@ -62,46 +63,50 @@ void encode_data_directive(char *operands, MemoryWord data_image[], int *dc_ptr)
 
 /* Encode .string contents into data image with memory-bound checks. */
 void encode_string_directive(char *operands, MemoryWord data_image[], int *dc_ptr) {
-    char *p = strchr(operands, '"');
     int error_found = 0;
+    char *p = skip_whitespaces(operands);
     
-    if (p != NULL) {
-        p++; /* Skip opening quote. */
-        
+    /* Check if the first non-whitespace character is indeed an opening quote */
+    if (*p == '"') {
+        p++; /* Move past the opening quote */
+
+        /* Iterate through characters until closing quote or end of line */
         while (*p != '"' && *p != '\0' && !error_found) {
             if (*dc_ptr >= MEMORY_SIZE) {
                 fprintf(stderr, "Error: Data memory overflow during .string encoding.\n");
                 error_found = 1;
             } else {
+                /* Store character value in data image with 12-bit mask */
                 data_image[*dc_ptr].value = *p & MASK_12_BITS;
                 data_image[*dc_ptr].are = 'A';
                 (*dc_ptr)++;
                 p++;
             }
         }
-        
+
         if (!error_found) {
             if (*p == '\0') {
+                /* String ended without a closing quote */
                 fprintf(stderr, "Error: Missing closing quote in .string directive.\n");
             } else if (*dc_ptr >= MEMORY_SIZE) {
                 fprintf(stderr, "Error: Data memory overflow during .string terminator encoding.\n");
             } else {
+                /* Add null terminator (\0) at the end of the string */
                 data_image[*dc_ptr].value = 0;
                 data_image[*dc_ptr].are = 'A';
                 (*dc_ptr)++;
             }
         }
     } else {
+        /* No opening quote was found where expected */
         fprintf(stderr, "Error: Missing opening quote in .string directive.\n");
     }
 }
-
 /* Encode instruction word and its extra operand words into code image. */
 void encode_instruction(OpcodeInfo *op_info, int src_mode, char *src_op, int dest_mode, char *dest_op, int current_ic, MemoryWord code_image[]) {
     unsigned int word = 0;
     int offset = current_ic - INITIAL_IC; 
     
-    int reg1, reg2;
     char *endptr;
     long val;
 
@@ -115,45 +120,34 @@ void encode_instruction(OpcodeInfo *op_info, int src_mode, char *src_op, int des
     offset++;
 
     if (op_info->num_operands == 2) {
-        if (src_mode == 3 && dest_mode == 3) {
-            reg1 = get_register_number(src_op);
-            reg2 = get_register_number(dest_op);
-            code_image[offset].value = ((1 << reg1) | (1 << reg2)) & 0xFFF;
+        /* קידוד אופרנד מקור */
+        if (src_mode == 0) { 
+            val = strtol(src_op + 1, &endptr, 10); 
+            code_image[offset].value = val & MASK_12_BITS; 
             code_image[offset].are = 'A';
-            offset++;
-        } else {
-            if (src_mode == 0) { 
-                val = strtol(src_op + 1, &endptr, 10); 
-                if (*endptr != '\0' && !isspace(*endptr)) {
-                    fprintf(stderr, "Error: Invalid immediate number format in source operand.\n");
-                }
-                code_image[offset].value = val & MASK_12_BITS; 
-                code_image[offset].are = 'A';
-            } else if (src_mode == 3) { 
-                code_image[offset].value = (1 << get_register_number(src_op)) & MASK_12_BITS;
-                code_image[offset].are = 'A';
-            } else { 
-                code_image[offset].value = 0;
-                code_image[offset].are = '?'; 
-            }
-            offset++;
-
-            if (dest_mode == 0) {
-                val = strtol(dest_op + 1, &endptr, 10);
-                if (*endptr != '\0' && !isspace(*endptr)) {
-                    fprintf(stderr, "Error: Invalid immediate number format in destination operand.\n");
-                }
-                code_image[offset].value = val & MASK_12_BITS;
-                code_image[offset].are = 'A';
-            } else if (dest_mode == 3) {
-                code_image[offset].value = (1 << get_register_number(dest_op)) & MASK_12_BITS;
-                code_image[offset].are = 'A';
-            } else {
-                code_image[offset].value = 0;
-                code_image[offset].are = '?';
-            }
-            offset++;
+        } else if (src_mode == 3) { 
+            code_image[offset].value = (1 << get_register_number(src_op)) & MASK_12_BITS;
+            code_image[offset].are = 'A';
+        } else { 
+            code_image[offset].value = 0;
+            code_image[offset].are = '?'; 
         }
+        offset++;
+
+        /* קידוד אופרנד יעד במילה נפרדת לחלוטין */
+        if (dest_mode == 0) {
+            val = strtol(dest_op + 1, &endptr, 10);
+            code_image[offset].value = val & MASK_12_BITS;
+            code_image[offset].are = 'A';
+        } else if (dest_mode == 3) {
+            code_image[offset].value = (1 << get_register_number(dest_op)) & MASK_12_BITS;
+            code_image[offset].are = 'A';
+        } else {
+            code_image[offset].value = 0;
+            code_image[offset].are = '?';
+        }
+        offset++;
+    
     } else if (op_info->num_operands == 1) {
         if (dest_mode == 0) {
             val = strtol(dest_op + 1, &endptr, 10);
@@ -172,3 +166,4 @@ void encode_instruction(OpcodeInfo *op_info, int src_mode, char *src_op, int des
         offset++;
     }
 }
+

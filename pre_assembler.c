@@ -212,3 +212,4 @@ void free_macros(Macro *head) {
         curr_macro = next_macro;
     }
 }
+
